@@ -39,7 +39,7 @@ if (isset($_SERVER['HTTPS'])) {
 }
 
 try {
-    $db = new SQLite3('invoices.db');
+    $db = new SQLite3(__DIR__ . '/invoices.db');
     $db->enableExceptions(true);
 } catch (Exception $e) {
     die("Database connection failed: " . $e->getMessage());
@@ -451,7 +451,7 @@ function getChatDb() {
     static $chat_db = null;
     if ($chat_db === null) {
         try {
-            $chat_db = new SQLite3('chat.db');
+            $chat_db = new SQLite3(__DIR__ . '/chat.db');
             $chat_db->enableExceptions(true);
             $chat_db->exec("CREATE TABLE IF NOT EXISTS chat_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -555,7 +555,7 @@ function getNonGSTDb() {
     static $nongst_db = null;
     if ($nongst_db === null) {
         try {
-            $nongst_db = new SQLite3('nongst_invoices.db');
+            $nongst_db = new SQLite3(__DIR__ . '/nongst_invoices.db');
             $nongst_db->enableExceptions(true);
             initNonGSTDb($nongst_db);
         } catch (Exception $e) {
@@ -10004,8 +10004,7 @@ function cancelYatraBooking() {
     $db->exec("UPDATE yatra_bookings SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE id=$id");
     $_SESSION['success']='Booking cancelled.'; header("Location: ?page=view_yatra_booking&id=$id"); exit();
 }
-</script>
-
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11501,7 +11500,7 @@ function addPurchase(containerId) {
             
             <?php
             
-function includePaymentLink() {
+function includePaymentLink_unused() {
     ?>
     <h2>Generate Payment Link</h2>
     
@@ -12004,7 +12003,7 @@ if (isLoggedIn()) {
 </body>
 </html>
 <?php
-function includeLogin() {
+function includeLogin_unused() {
     ?>
     <div class="login-container">
         <h2>Invoice System Login</h2>
@@ -12027,7 +12026,7 @@ function includeLogin() {
     <?php
 }
 
-function includeBookings() {
+function includeBookings_unused() {
     global $db;
     $search = $_GET['search'] ?? '';
     $status = $_GET['status'] ?? '';
@@ -12142,7 +12141,7 @@ function includeBookings() {
     <?php
 }
 
-function includeCreateBooking() {
+function includeCreateBooking_unused() {
     ?>
     <h2>Create New Service Booking</h2>
     <form method="POST" id="bookingForm">
@@ -12297,7 +12296,7 @@ function removeBookingItem(button) {
     <?php
 }
 
-function includeViewBooking() {
+function includeViewBooking_unused() {
     global $db;
     
     if (!isset($_GET['id'])) {
@@ -12642,7 +12641,7 @@ function includeViewBooking() {
     <?php
 }
 
-function includeEditBooking() {
+function includeEditBooking_unused() {
     global $db;
     
     if (!isset($_GET['id'])) {
@@ -12898,13 +12897,12 @@ function confirmDeleteBooking(bookingId, bookingNumber) {
     </script>
     <?php
 }
-?>
 
 // ═══════════════════════════════════════════════════════════
 // YATRA PAGE RENDERING FUNCTIONS
 // ═══════════════════════════════════════════════════════════
 
-function includeYatra() {
+function includeYatra_unused() {
     global $db;
     if(isAccountant()){echo '<div class="message error">Access denied.</div>';return;}
     $archived = isset($_GET['archived']);
@@ -12999,7 +12997,7 @@ function includeYatra() {
 <?php
 }
 
-function includeYatraBookings() {
+function includeYatraBookings_unused2() {
     global $db;
     if(isAccountant()){echo '<div class="message error">Access denied.</div>';return;}
     $yid = intval($_GET['yatra_id']??0);
@@ -13057,7 +13055,7 @@ function shareYatraBooking(id){
 <?php
 }
 
-function includeCreateYatraBooking() {
+function includeCreateYatraBooking_unused() {
     global $db;
     if(isAccountant()){echo '<div class="message error">Access denied.</div>';return;}
     $pref_yid = intval($_GET['yatra_id']??0);
@@ -13195,7 +13193,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <?php
 }
 
-function includeViewYatraBooking() {
+function includeViewYatraBooking_unused() {
     global $db;
     if(isAccountant()){echo '<div class="message error">Access denied.</div>';return;}
     $id = intval($_GET['id']??0);
@@ -13385,7 +13383,7 @@ function shareYatraBooking(id){
 <?php
 }
 
-function includeEditYatraBooking() {
+function includeEditYatraBooking_unused() {
     global $db;
     if(isAccountant()){echo '<div class="message error">Access denied.</div>';return;}
     $id = intval($_GET['id']??0);
@@ -13466,157 +13464,7 @@ renderPassengers();
 <?php
 }
 
-
-
-<?php
-
-// ═══════════════════════════════════════════════════════
-// YATRA PAGE FUNCTIONS
-// ═══════════════════════════════════════════════════════
-
-function includeYatra() {
-    global $db;
-    if(!isAdmin()&&!isManager()){echo '<div class="message error">Access denied.</div>';return;}
-    // Auto-archive past-closing-date yatras
-    $today=date('Y-m-d');
-    try{$db->exec("UPDATE yatras SET is_archived=1,status='archived' WHERE closing_date<'$today' AND closing_date!='' AND is_archived=0");}catch(Exception $e){}
-    $archived=isset($_GET['archived']);
-    $yatras=getAllYatras($archived);
-    $cur=getSetting('currency_symbol','₹');
-    $edit_id=intval($_GET['edit']??0);
-    $ey=$edit_id?getYatraById($edit_id):null;
-    ?>
-    <h2 class="page-title-h2" style="font-size:22px;font-weight:800;margin-bottom:20px">🕌 Teerth Yatra Management</h2>
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-        <a href="?page=yatra" class="btn <?php echo !$archived?'':' btn-secondary'; ?>" style="<?php echo !$archived?'background:var(--success);color:#fff':''; ?>">🕌 Active Yatras</a>
-        <a href="?page=yatra&archived=1" class="btn-secondary btn" style="<?php echo $archived?'background:var(--warning);color:#fff':''; ?>">📦 Archived</a>
-        <a href="?page=create_yatra_booking" class="btn" style="background:var(--primary);color:#fff">➕ New Booking</a>
-    </div>
-
-    <div class="card" style="margin-bottom:20px">
-        <div class="card-header"><div class="card-title"><?php echo $ey?'Edit Yatra':'Add New Yatra'; ?></div></div>
-        <div class="card-body">
-        <form method="POST">
-        <input type="hidden" name="action" value="save_yatra">
-        <?php if($ey): ?><input type="hidden" name="yatra_id" value="<?php echo $ey['id']; ?>"><?php endif; ?>
-        <div class="row">
-            <div class="form-group"><label>Yatra Name *</label><input type="text" name="yatra_name" value="<?php echo htmlspecialchars($ey['yatra_name']??''); ?>" required></div>
-            <div class="form-group"><label>Destination *</label><input type="text" name="destination" value="<?php echo htmlspecialchars($ey['destination']??''); ?>" required></div>
-        </div>
-        <div class="row">
-            <div class="form-group"><label>Departure Date</label><input type="date" name="departure_date" value="<?php echo $ey['departure_date']??''; ?>"></div>
-            <div class="form-group"><label>Return Date</label><input type="date" name="return_date" value="<?php echo $ey['return_date']??''; ?>"></div>
-            <div class="form-group"><label>Closing Date</label><input type="date" name="closing_date" value="<?php echo $ey['closing_date']??''; ?>"><small>Auto-archives after this date</small></div>
-        </div>
-        <div class="row">
-            <div class="form-group"><label>Per Person Amount (<?php echo $cur; ?>) *</label><input type="number" step="0.01" name="per_person_amount" value="<?php echo floatval($ey['per_person_amount']??0); ?>" required></div>
-            <div class="form-group"><label>Total Seats</label><input type="number" name="total_seats" value="<?php echo intval($ey['total_seats']??0); ?>"></div>
-            <div class="form-group"><label>Bus Details</label><input type="text" name="bus_details" value="<?php echo htmlspecialchars($ey['bus_details']??''); ?>"></div>
-        </div>
-        <div class="form-group"><label>Description</label><textarea name="description" rows="2"><?php echo htmlspecialchars($ey['description']??''); ?></textarea></div>
-        <div class="action-buttons">
-            <button type="submit" class="btn" style="background:var(--success);color:#fff">💾 Save Yatra</button>
-            <?php if($ey): ?><a href="?page=yatra" class="btn-secondary btn">Cancel</a><?php endif; ?>
-        </div>
-        </form>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header"><div class="card-title"><?php echo $archived?'Archived Yatras':'Active Yatras'; ?> (<?php echo count($yatras); ?>)</div></div>
-        <div style="overflow-x:auto"><table>
-        <thead><tr><th>Yatra Name</th><th>Destination</th><th>Departure</th><th>Per Person</th><th>Seats</th><th>Bookings</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>
-        <?php if(empty($yatras)): ?>
-        <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text2)">No yatras found.</td></tr>
-        <?php else: foreach($yatras as $y): ?>
-        <tr>
-            <td><strong><?php echo htmlspecialchars($y['yatra_name']); ?></strong></td>
-            <td><?php echo htmlspecialchars($y['destination']); ?></td>
-            <td><?php echo $y['departure_date']?date('d-m-Y',strtotime($y['departure_date'])):'—'; ?></td>
-            <td><?php echo $cur.' '.number_format($y['per_person_amount'],2); ?></td>
-            <td><?php echo $y['total_seats']?$y['total_seats']:'—'; ?></td>
-            <td><a href="?page=yatra_bookings&yatra_id=<?php echo $y['id']; ?>"><?php echo intval($y['booking_count']); ?> bookings</a></td>
-            <td><span class="user-badge <?php echo $y['is_archived']?'accountant':'manager'; ?>"><?php echo $y['is_archived']?'Archived':'Active'; ?></span></td>
-            <td class="actions-cell">
-                <a href="?page=create_yatra_booking&yatra_id=<?php echo $y['id']; ?>" class="action-btn view-btn">+ Book</a>
-                <a href="?page=yatra_bookings&yatra_id=<?php echo $y['id']; ?>" class="action-btn" style="background:#ede9fe;color:#7c3aed">Bookings</a>
-                <a href="?page=yatra&edit=<?php echo $y['id']; ?>" class="action-btn edit-btn">Edit</a>
-                <?php if(!$y['is_archived']): ?>
-                <form method="POST" style="display:inline" onsubmit="return confirm('Archive this yatra?')">
-                    <input type="hidden" name="action" value="archive_yatra"><input type="hidden" name="yatra_id" value="<?php echo $y['id']; ?>">
-                    <button type="submit" class="action-btn" style="background:#fef3c7;color:#d97706">Archive</button>
-                </form>
-                <?php else: ?>
-                <form method="POST" style="display:inline">
-                    <input type="hidden" name="action" value="unarchive_yatra"><input type="hidden" name="yatra_id" value="<?php echo $y['id']; ?>">
-                    <button type="submit" class="action-btn view-btn">Restore</button>
-                </form>
-                <?php endif; ?>
-            </td>
-        </tr>
-        <?php endforeach; endif; ?>
-        </tbody>
-        </table></div>
-    </div>
-<?php }
-
-function includeYatraBookings() {
-    global $db;
-    $yid=intval($_GET['yatra_id']??0);
-    $s=$_GET['search']??'';
-    $bookings=getAllYatraBookings($yid,$s);
-    $cur=getSetting('currency_symbol','₹');
-    $yatra=$yid?getYatraById($yid):null;
-    ?>
-    <h2 style="font-size:22px;font-weight:800;margin-bottom:20px">🚌 Yatra Bookings<?php echo $yatra?' — '.htmlspecialchars($yatra['yatra_name']):''; ?></h2>
-    <div style="background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)">
-        <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-            <input type="hidden" name="page" value="yatra_bookings">
-            <?php if($yid): ?><input type="hidden" name="yatra_id" value="<?php echo $yid; ?>"><?php endif; ?>
-            <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0"><label>Search (Name, PNR, Ref, Phone)</label><input type="text" name="search" value="<?php echo htmlspecialchars($s); ?>" placeholder="Search..."></div>
-            <button type="submit" class="btn">🔍 Search</button>
-        </form>
-    </div>
-    <div class="action-buttons" style="margin-bottom:16px">
-        <a href="?page=create_yatra_booking<?php echo $yid?'&yatra_id='.$yid:''; ?>" class="btn" style="background:var(--success);color:#fff">➕ New Booking</a>
-        <a href="?page=yatra" class="btn-secondary btn">← Yatras</a>
-    </div>
-    <div class="card"><div style="overflow-x:auto"><table>
-    <thead><tr><th>PNR</th><th>Ref #</th><th>Lead Passenger</th><th>Yatra</th><th>Pax</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
-    <tbody>
-    <?php if(empty($bookings)): ?>
-    <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text2)">No bookings found.</td></tr>
-    <?php else: foreach($bookings as $bk): ?>
-    <tr>
-        <td><span style="font-family:monospace;font-size:15px;font-weight:800;letter-spacing:3px;color:var(--primary)"><?php echo htmlspecialchars($bk['pnr']??'—'); ?></span></td>
-        <td><?php echo htmlspecialchars($bk['booking_ref']); ?></td>
-        <td><?php echo htmlspecialchars($bk['lead_passenger_name']); ?><br><small style="color:var(--text2)"><?php echo htmlspecialchars($bk['phone']??''); ?></small></td>
-        <td><?php echo htmlspecialchars($bk['yatra_name']??''); ?></td>
-        <td style="text-align:center"><?php echo $bk['total_passengers']; ?></td>
-        <td><?php echo $cur.' '.number_format($bk['total_amount'],2); ?></td>
-        <td style="color:var(--success)"><?php echo $cur.' '.number_format($bk['amount_paid'],2); ?></td>
-        <td style="color:<?php echo floatval($bk['balance'])>0?'var(--danger)':'var(--success)'; ?>"><?php echo $cur.' '.number_format($bk['balance'],2); ?></td>
-        <td><span class="payment-badge <?php echo $bk['payment_status']; ?>"><?php echo ucfirst(str_replace('_',' ',$bk['payment_status'])); ?></span></td>
-        <td class="actions-cell">
-            <a href="?page=view_yatra_booking&id=<?php echo $bk['id']; ?>" class="action-btn view-btn">View</a>
-            <a href="?page=edit_yatra_booking&id=<?php echo $bk['id']; ?>" class="action-btn edit-btn">Edit</a>
-            <button type="button" onclick="shareYatraBooking(<?php echo $bk['id']; ?>)" class="action-btn" style="background:#dcfce7;color:#15803d">📤 Share</button>
-        </td>
-    </tr>
-    <?php endforeach; endif; ?>
-    </tbody>
-    </table></div></div>
-    <script>
-    function shareYatraBooking(id) {
-        fetch('?ajax=get_yatra_share&id='+id)
-        .then(function(r){return r.json();})
-        .then(function(d){if(d.url){navigator.clipboard.writeText(d.url).then(function(){alert('Link copied!\n'+d.url);}).catch(function(){prompt('Copy:',d.url);});}});
-    }
-    </script>
-<?php }
-
-function includeCreateYatraBooking() {
+function includeViewYatraBooking_unused2() {
     global $db;
     $pref_yid=intval($_GET['yatra_id']??0);
     $yatras=getAllYatras(false);
@@ -13727,7 +13575,7 @@ function includeCreateYatraBooking() {
         document.getElementById('total_passengers_count').value = yatraPassengers.length;
         updateYatraTotal();
     }
-    function escH(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s||'\x27));return d.innerHTML;}
+    function escH(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s||''));return d.innerHTML;}
     function fillYatraDefaults(sel) {
         var opt = sel.options[sel.selectedIndex];
         if(opt.value) {
@@ -13748,7 +13596,7 @@ function includeCreateYatraBooking() {
     </script>
 <?php }
 
-function includeViewYatraBooking() {
+function includeViewYatraBooking_unused3() {
     global $db;
     $id=intval($_GET['id']??0);
     $bk=getYatraBookingById($id);
@@ -13925,7 +13773,7 @@ function includeViewYatraBooking() {
     </script>
 <?php }
 
-function includeEditYatraBooking() {
+function includeEditYatraBooking_unused3() {
     global $db;
     $id=intval($_GET['id']??0);
     $bk=getYatraBookingById($id);
@@ -14013,7 +13861,7 @@ function includeEditYatraBooking() {
 <?php }
 ?>
 
-<?php ob_end_flush(); ?>
+<?php if (ob_get_level() > 0) ob_end_flush(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17454,4 +17302,4 @@ function includeEditYatraBooking() {
 <?php }
 ?>
 
-<?php ob_end_flush(); ?>
+<?php if (ob_get_level() > 0) ob_end_flush(); ?>
