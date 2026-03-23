@@ -9074,6 +9074,9 @@ function includeViewEnrollment() {
                     </form>
                 </td>
                 <?php endif; ?>
+                <td>
+                    <a href="certificate.php?action=academy_receipt&id=<?php echo $id; ?>&payment_id=<?php echo $p['id']; ?>" target="_blank" class="btn btn-sm" style="background:#2c3e50;color:#fff;padding:4px 8px;font-size:11px;text-decoration:none">🖨️ Receipt</a>
+                </td>
             </tr>
             <?php endforeach; ?>
             </tbody>
@@ -9701,6 +9704,7 @@ if (isset($_GET['ajax']) && isLoggedIn()) {
 
 $page = $_GET['page'] ?? 'dashboard';
 if (!isLoggedIn() && $page !== 'login') $page = 'login';
+if ($page !== 'login') requireLogin();
 if (isLoggedIn()) chatHeartbeat();
 
 if ($page !== 'create_invoice' && isset($_SESSION['last_invoice_id'])) {
@@ -11498,6 +11502,41 @@ function addPurchase(containerId) {
             <?php endif; ?>
             
             
+
+            <?php
+            switch ($page) {
+                case 'dashboard': if(function_exists('includeDashboard')) { includeDashboard(); } else { echo 'Module not implemented yet.'; } break;
+                case 'create_invoice': if(function_exists('includeCreateInvoice')) { includeCreateInvoice(); } else { echo 'Module not implemented yet.'; } break;
+                case 'invoices': if(function_exists('includeInvoices')) { includeInvoices(); } else { echo 'Module not implemented yet.'; } break;
+                case 'pending_deletions': if(function_exists('includePendingDeletions')) { includePendingDeletions(); } else { echo 'Module not implemented yet.'; } break;
+                case 'edit_invoice': if(function_exists('includeEditInvoice')) { includeEditInvoice(); } else { echo 'Module not implemented yet.'; } break;
+                case 'view_invoice': if(function_exists('includeViewInvoice')) { includeViewInvoice(); } else { echo 'Module not implemented yet.'; } break;
+                case 'settings': if(function_exists('includeSettings')) { includeSettings(); } else { echo 'Module not implemented yet.'; } break;
+                case 'invoice_templates': if(function_exists('includeInvoiceTemplates')) { includeInvoiceTemplates(); } else { echo 'Module not implemented yet.'; } break;
+                case 'profile': if(function_exists('includeProfile')) { includeProfile(); } else { echo 'Module not implemented yet.'; } break;
+                case 'export': if(function_exists('includeExport')) { includeExport(); } else { echo 'Module not implemented yet.'; } break;
+                case 'expenses': if(function_exists('includeExpenses')) { includeExpenses(); } else { echo 'Module not implemented yet.'; } break;
+                case 'academy': if(function_exists('includeAcademy')) { includeAcademy(); } else { echo 'Module not implemented yet.'; } break;
+                case 'academy_courses': if(function_exists('includeAcademyCourses')) { includeAcademyCourses(); } else { echo 'Module not implemented yet.'; } break;
+                case 'create_enrollment': if(function_exists('includeCreateEnrollment')) { includeCreateEnrollment(); } else { echo 'Module not implemented yet.'; } break;
+                case 'view_enrollment': if(function_exists('includeViewEnrollment')) { includeViewEnrollment(); } else { echo 'Module not implemented yet.'; } break;
+                case 'edit_enrollment': if(function_exists('includeEditEnrollment')) { includeEditEnrollment(); } else { echo 'Module not implemented yet.'; } break;
+                case 'academy_reminders': if(function_exists('includeAcademyReminders')) { includeAcademyReminders(); } else { echo 'Module not implemented yet.'; } break;
+                case 'users': if(function_exists('includeUsers')) { includeUsers(); } else { echo 'Module not implemented yet.'; } break;
+                case 'login': if(function_exists('includeLogin')) { includeLogin(); } else { echo 'Module not implemented yet.'; } break;
+                case 'bookings': if(function_exists('includeBookings')) { includeBookings(); } else { echo 'Module not implemented yet.'; } break;
+                case 'create_booking': if(function_exists('includeCreateBooking')) { includeCreateBooking(); } else { echo 'Module not implemented yet.'; } break;
+                case 'view_booking': if(function_exists('includeViewBooking')) { includeViewBooking(); } else { echo 'Module not implemented yet.'; } break;
+                case 'edit_booking': if(function_exists('includeEditBooking')) { includeEditBooking(); } else { echo 'Module not implemented yet.'; } break;
+                case 'yatra': if(function_exists('includeYatra')) { includeYatra(); } else { echo 'Module not implemented yet.'; } break;
+                case 'yatra_bookings': if(function_exists('includeYatraBookings')) { includeYatraBookings(); } else { echo 'Module not implemented yet.'; } break;
+                case 'create_yatra_booking': if(function_exists('includeCreateYatraBooking')) { includeCreateYatraBooking(); } else { echo 'Module not implemented yet.'; } break;
+                case 'view_yatra_booking': if(function_exists('includeViewYatraBooking')) { includeViewYatraBooking(); } else { echo 'Module not implemented yet.'; } break;
+                case 'edit_yatra_booking': if(function_exists('includeEditYatraBooking')) { includeEditYatraBooking(); } else { echo 'Module not implemented yet.'; } break;
+                default: echo 'Page not found.'; break;
+            }
+            ?>
+
             <?php
             
 function includePaymentLink_unused() {
@@ -12821,7 +12860,7 @@ function includeViewYatraBooking_unused() {
 <div class="action-buttons no-print" style="margin-bottom:16px">
     <a href="?page=yatra_bookings" class="btn-secondary btn btn-sm">← Bookings</a>
     <a href="?page=edit_yatra_booking&id=<?php echo $id;?>" class="btn btn-sm" style="background:#f59e0b;color:#fff">✏️ Edit</a>
-    <button onclick="window.print()" class="btn btn-print btn-sm">🖨️ Print Ticket</button>
+    <a href="certificate.php?action=yatra_receipt&id=<?php echo $id; ?>" target="_blank" class="btn btn-print btn-sm" style="background:#2c3e50;color:#fff;text-decoration:none">🖨️ Print Ticket</a>
     <button onclick="shareYatraBooking(<?php echo $id;?>)" class="btn btn-whatsapp btn-sm">📤 Share</button>
     <button onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($vurl);?>').then(()=>alert('Verify link copied!'))" class="btn-secondary btn btn-sm">🔍 QR Verify Link</button>
 </div>
@@ -13164,7 +13203,7 @@ function includeViewYatraBooking_unused2() {
             var tr = document.createElement('tr');
             tr.innerHTML = '<td>'+(i+1)+'</td>'
                 +'<td><input style="width:140px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.n)+'" oninput="yatraPassengers['+i+'].n=this.value"></td>'
-                +'<td><input type="number" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.a||'')+'\x22 oninput="yatraPassengers['+i+'].a=this.value"></td>'
+                +'<td><input type="number" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.a||'')+'" oninput="yatraPassengers['+i+'].a=this.value"></td>'
                 +'<td><select style="padding:6px;border:1px solid #ddd;border-radius:4px" onchange="yatraPassengers['+i+'].g=this.value">'
                     +['Male','Female','Other'].map(function(g){return '<option'+(p.g===g?' selected':'')+'>'+g+'</option>';}).join('')
                 +'</select></td>'
@@ -13220,7 +13259,7 @@ function includeViewYatraBooking_unused3() {
     <div class="action-buttons no-print" style="margin-bottom:16px">
         <a href="?page=yatra_bookings" class="btn-secondary btn">← Back</a>
         <a href="?page=edit_yatra_booking&id=<?php echo $id; ?>" class="btn" style="background:var(--warning);color:#fff">✏️ Edit</a>
-        <button onclick="window.print()" class="btn" style="background:var(--success);color:#fff">🖨️ Print Ticket</button>
+        <a href="certificate.php?action=yatra_receipt&id=<?php echo $id; ?>" target="_blank" class="btn" style="background:var(--success);color:#fff;text-decoration:none">🖨️ Print Ticket</a>
         <button onclick="shareYatraBk(<?php echo $id; ?>)" class="btn" style="background:#25D366;color:#fff">📤 Share</button>
         <button onclick="copyLink('<?php echo htmlspecialchars($vurl); ?>')" class="btn btn-secondary" style="font-size:12px">🔍 Verify QR Link</button>
     </div>
@@ -13448,7 +13487,7 @@ function includeEditYatraBooking_unused3() {
             var tr=document.createElement('tr');
             tr.innerHTML='<td>'+(i+1)+'</td>'
                 +'<td><input style="width:130px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.n)+'" oninput="yatraPassengers['+i+'].n=this.value"></td>'
-                +'<td><input type="number" style="width:55px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.a||'')+'\x22 oninput="yatraPassengers['+i+'].a=this.value"></td>'
+                +'<td><input type="number" style="width:55px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.a||'')+'" oninput="yatraPassengers['+i+'].a=this.value"></td>'
                 +'<td><select style="padding:6px;border:1px solid #ddd;border-radius:4px" onchange="yatraPassengers['+i+'].g=this.value">'
                     +['Male','Female','Other'].map(function(g){return '<option'+(p.g===g?' selected':'')+'>'+g+'</option>';}).join('')
                 +'</select></td>'
@@ -14608,7 +14647,7 @@ function includeCreateYatraBooking() {
             var tr = document.createElement('tr');
             tr.innerHTML = '<td>'+(i+1)+'</td>'
                 +'<td><input style="width:140px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.n)+'" oninput="yatraPassengers['+i+'].n=this.value"></td>'
-                +'<td><input type="number" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.a||'')+'\x22 oninput="yatraPassengers['+i+'].a=this.value"></td>'
+                +'<td><input type="number" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:4px" value="'+escH(p.a||'')+'" oninput="yatraPassengers['+i+'].a=this.value"></td>'
                 +'<td><select style="padding:6px;border:1px solid #ddd;border-radius:4px" onchange="yatraPassengers['+i+'].g=this.value">'
                     +['Male','Female','Other'].map(function(g){return '<option'+(p.g===g?' selected':'')+'>'+g+'</option>';}).join('')
                 +'</select></td>'
@@ -14625,7 +14664,7 @@ function includeCreateYatraBooking() {
         document.getElementById('total_passengers_count').value = yatraPassengers.length;
         updateYatraTotal();
     }
-    function escH(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s||'\x27));return d.innerHTML;}
+    function escH(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s||''));return d.innerHTML;}
     function fillYatraDefaults(sel) {
         var opt = sel.options[sel.selectedIndex];
         if(opt.value) {
@@ -14664,7 +14703,7 @@ function includeViewYatraBooking() {
     <div class="action-buttons no-print" style="margin-bottom:16px">
         <a href="?page=yatra_bookings" class="btn-secondary btn">← Back</a>
         <a href="?page=edit_yatra_booking&id=<?php echo $id; ?>" class="btn" style="background:var(--warning);color:#fff">✏️ Edit</a>
-        <button onclick="window.print()" class="btn" style="background:var(--success);color:#fff">🖨️ Print Ticket</button>
+        <a href="certificate.php?action=yatra_receipt&id=<?php echo $id; ?>" target="_blank" class="btn" style="background:var(--success);color:#fff;text-decoration:none">🖨️ Print Ticket</a>
         <button onclick="shareYatraBk(<?php echo $id; ?>)" class="btn" style="background:#25D366;color:#fff">📤 Share</button>
         <button onclick="copyLink('<?php echo htmlspecialchars($vurl); ?>')" class="btn btn-secondary" style="font-size:12px">🔍 Verify QR Link</button>
     </div>
