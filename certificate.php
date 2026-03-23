@@ -11,6 +11,328 @@ if(!isset($db)){
 if(!isset($enrollment_id)) $enrollment_id=intval($_GET['enrollment_id']??0);
 if(!$enrollment_id){header('Location: https://www.hidk.in');exit();}
 
+if (isset($_GET['action']) && $_GET['action'] === 'academy_receipt') {
+    $payment_id = intval($_GET['payment_id'] ?? 0);
+    if (!$payment_id || !$enrollment_id) { header('Location: https://www.hidk.in'); exit(); }
+
+    $enr = $db->querySingle("SELECT e.*,c.course_name,c.course_code,c.duration_months FROM academy_enrollments e LEFT JOIN academy_courses c ON e.course_id=c.id WHERE e.id=".intval($enrollment_id),true);
+    if (!$enr) { header('Location: https://www.hidk.in'); exit(); }
+
+    $payment = $db->querySingle("SELECT p.*, u.username as paid_by FROM academy_payments p LEFT JOIN users u ON p.created_by=u.id WHERE p.id=".intval($payment_id),true);
+    if (!$payment) { header('Location: https://www.hidk.in'); exit(); }
+
+    function gs($k,$d=''){global $db;$s=$db->prepare("SELECT setting_value FROM settings WHERE setting_key=:k");$s->bindValue(':k',$k,SQLITE3_TEXT);$r=$s->execute()->fetchArray(SQLITE3_ASSOC);return $r?$r['setting_value']:$d;}
+
+    $co=gs('company_name','D K ASSOCIATES');
+    $acName=gs('academy_name','Skill Training Academy');
+    $acAddr=gs('office_address','');
+    $phone=gs('office_phone','');
+    $logo=gs('logo_path','');
+
+    $vtok=$db->querySingle("SELECT token FROM qr_verifications WHERE doc_type='enrollment' AND doc_id=".intval($enrollment_id)." AND is_active=1 LIMIT 1");
+    $vurl='';
+    if($vtok){
+        $proto=isset($_SERVER['HTTPS'])?'https://':'http://';
+        $host=$_SERVER['HTTP_HOST']??'localhost';
+        $dir=rtrim(dirname($_SERVER['PHP_SELF']),'/');
+        $vurl=$proto.$host.$dir.'/view.php?verify='.$vtok;
+    }
+    $vqr=$vurl?'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='.urlencode($vurl).'&format=png&margin=4':'';
+    $cur = gs('currency_symbol', '₹');
+
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Receipt — <?php echo htmlspecialchars($enr['candidate_name']);?></title>
+    <style>
+    body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+    .receipt-container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #ddd; padding: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+    .header-left { flex: 1; }
+    .header-right { text-align: right; }
+    .logo { max-height: 80px; max-width: 200px; margin-bottom: 10px; }
+    .title { font-size: 24px; font-weight: bold; color: #2c3e50; text-transform: uppercase; letter-spacing: 2px; }
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+    .table-container { margin-top: 30px; margin-bottom: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background: #f8f9fa; font-weight: bold; color: #2c3e50; }
+    .totals { margin-top: 20px; text-align: right; font-size: 16px; font-weight: bold; }
+    .qr-container { text-align: right; margin-top: 20px; }
+    .qr-container img { border: 1px solid #ccc; padding: 5px; }
+    .terms { font-size: 11px; color: #666; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; }
+    @media print {
+        body { background: #fff; padding: 0; }
+        .receipt-container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+        .no-print { display: none !important; }
+    }
+    </style>
+    </head>
+    <body>
+    <div style="text-align:center;margin-bottom:20px" class="no-print">
+        <button onclick="window.print()" style="padding:10px 20px;background:#2c3e50;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:16px;">🖨️ Print Receipt</button>
+    </div>
+    <div class="receipt-container">
+        <div class="header">
+            <div class="header-left">
+                <?php if ($logo && file_exists($logo)): ?>
+                <img src="<?php echo htmlspecialchars($logo); ?>" class="logo" alt="Logo">
+                <?php endif; ?>
+                <h2 style="margin:0;color:#2c3e50;font-size:22px"><?php echo htmlspecialchars($co); ?></h2>
+                <div style="color:#555;font-size:14px;margin-top:5px"><?php echo htmlspecialchars($acName); ?></div>
+                <div style="color:#777;font-size:12px;margin-top:2px"><?php echo htmlspecialchars($acAddr); ?></div>
+                <div style="color:#777;font-size:12px;margin-top:2px">Phone: <?php echo htmlspecialchars($phone); ?></div>
+            </div>
+            <div class="header-right">
+                <div class="title">FEE RECEIPT</div>
+                <div style="margin-top:10px;font-size:14px;"><strong>Receipt No:</strong> <?php echo htmlspecialchars($payment['receipt_number']); ?></div>
+                <div style="font-size:14px;margin-top:5px;"><strong>Date:</strong> <?php echo date('d-M-Y', strtotime($payment['payment_date'])); ?></div>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div>
+                <strong style="color:#2c3e50">Candidate Information:</strong><br>
+                Name: <strong><?php echo htmlspecialchars($enr['candidate_name']); ?></strong><br>
+                <?php echo htmlspecialchars($enr['relation']); ?>: <?php echo htmlspecialchars($enr['relative_name']); ?><br>
+                Enrollment ID: <strong><?php echo htmlspecialchars($enr['enrollment_id']); ?></strong>
+            </div>
+            <div style="text-align:right">
+                <strong style="color:#2c3e50">Course Details:</strong><br>
+                Course: <strong><?php echo htmlspecialchars($enr['course_name']); ?></strong><br>
+                Code: <?php echo htmlspecialchars($enr['course_code']); ?><br>
+                Duration: <?php echo htmlspecialchars($enr['duration_months']); ?> Months
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Fee Description</th>
+                        <th>Payment Method</th>
+                        <th>Transaction ID</th>
+                        <th style="text-align:right">Amount (<?php echo $cur; ?>)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><?php echo ucfirst($payment['fee_type']); ?> Fee</td>
+                        <td><?php echo htmlspecialchars($payment['payment_method']); ?></td>
+                        <td><?php echo htmlspecialchars($payment['transaction_id'] ?: '-'); ?></td>
+                        <td style="text-align:right"><?php echo number_format($payment['amount'], 2); ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="totals">
+            Total Amount Received: <?php echo $cur; ?> <?php echo number_format($payment['amount'], 2); ?>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:40px;">
+            <div style="flex:1;">
+                <?php if ($vqr): ?>
+                <div class="qr-container" style="text-align:left;">
+                    <img src="<?php echo htmlspecialchars($vqr); ?>" width="100" height="100" alt="Verification QR">
+                    <div style="font-size:10px;color:#777;margin-top:5px;">Scan to Verify Student Details</div>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div style="flex:1; text-align:right; align-self:flex-end;">
+                <div style="border-top:1px solid #333; width:200px; display:inline-block; padding-top:5px; font-weight:bold; font-size:14px;">
+                    Authorized Signatory
+                </div>
+                <div style="font-size:12px; color:#666; margin-top:5px;">
+                    <?php echo htmlspecialchars($co); ?>
+                </div>
+            </div>
+        </div>
+
+        <div class="terms">
+            <strong>Terms & Conditions:</strong>
+            <ul style="margin-top:5px; padding-left:20px;">
+                <li>This is a computer-generated receipt.</li>
+                <li>Fees once paid are non-refundable and non-transferable under any circumstances.</li>
+                <li>Minimum advance booking amounts/admission fees are strictly non-refundable.</li>
+                <li>All disputes are subject to local jurisdiction.</li>
+            </ul>
+        </div>
+    </div>
+    </body>
+    </html>
+    <?php
+    exit();
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'yatra_receipt') {
+    $id = intval($_GET['id'] ?? 0);
+    if (!$id) { header('Location: https://www.hidk.in'); exit(); }
+
+    // Yatra fetching logic
+    $s=$db->prepare("SELECT yb.*,y.departure_date,y.return_date,y.bus_details,y.destination FROM yatra_bookings yb LEFT JOIN yatras y ON yb.yatra_id=y.id WHERE yb.id=:id");
+    $s->bindValue(':id',$id,SQLITE3_INTEGER);
+    $bk=$s->execute()->fetchArray(SQLITE3_ASSOC);
+    if(!$bk) { header('Location: https://www.hidk.in'); exit(); }
+
+    $sp=$db->prepare("SELECT * FROM yatra_passengers WHERE booking_id=:id ORDER BY id");
+    $sp->bindValue(':id',$id,SQLITE3_INTEGER);
+    $res=$sp->execute(); $bk['passengers']=[];
+    while($r=$res->fetchArray(SQLITE3_ASSOC)) $bk['passengers'][]=$r;
+
+    function gs($k,$d=''){global $db;$s=$db->prepare("SELECT setting_value FROM settings WHERE setting_key=:k");$s->bindValue(':k',$k,SQLITE3_TEXT);$r=$s->execute()->fetchArray(SQLITE3_ASSOC);return $r?$r['setting_value']:$d;}
+
+    $co=gs('company_name','D K ASSOCIATES');
+    $acAddr=gs('office_address','');
+    $phone=gs('office_phone','');
+    $logo=gs('logo_path','');
+
+    $vtok=$db->querySingle("SELECT token FROM qr_verifications WHERE doc_type='yatra' AND doc_id=".intval($id)." AND is_active=1 LIMIT 1");
+    $vurl='';
+    if($vtok){
+        $proto=isset($_SERVER['HTTPS'])?'https://':'http://';
+        $host=$_SERVER['HTTP_HOST']??'localhost';
+        $dir=rtrim(dirname($_SERVER['PHP_SELF']),'/');
+        $vurl=$proto.$host.$dir.'/view.php?verify='.$vtok;
+    }
+    $vqr=$vurl?'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='.urlencode($vurl).'&format=png&margin=4':'';
+    $cur = gs('currency_symbol', '₹');
+
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Yatra Ticket — <?php echo htmlspecialchars($bk['lead_passenger_name']);?></title>
+    <style>
+    body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+    .receipt-container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #ddd; padding: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+    .header-left { flex: 1; }
+    .header-right { text-align: right; }
+    .logo { max-height: 80px; max-width: 200px; margin-bottom: 10px; }
+    .title { font-size: 24px; font-weight: bold; color: #2c3e50; text-transform: uppercase; letter-spacing: 2px; }
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+    .table-container { margin-top: 30px; margin-bottom: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background: #f8f9fa; font-weight: bold; color: #2c3e50; }
+    .totals { margin-top: 20px; font-size: 14px; }
+    .qr-container { text-align: right; margin-top: 20px; }
+    .qr-container img { border: 1px solid #ccc; padding: 5px; }
+    .terms { font-size: 11px; color: #666; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; }
+    @media print {
+        body { background: #fff; padding: 0; }
+        .receipt-container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+        .no-print { display: none !important; }
+    }
+    </style>
+    </head>
+    <body>
+    <div style="text-align:center;margin-bottom:20px" class="no-print">
+        <button onclick="window.print()" style="padding:10px 20px;background:#2c3e50;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:16px;">🖨️ Print Ticket</button>
+    </div>
+    <div class="receipt-container">
+        <div class="header">
+            <div class="header-left">
+                <?php if ($logo && file_exists($logo)): ?>
+                <img src="<?php echo htmlspecialchars($logo); ?>" class="logo" alt="Logo">
+                <?php endif; ?>
+                <h2 style="margin:0;color:#2c3e50;font-size:22px"><?php echo htmlspecialchars($co); ?></h2>
+                <div style="color:#777;font-size:12px;margin-top:2px"><?php echo htmlspecialchars($acAddr); ?></div>
+                <div style="color:#777;font-size:12px;margin-top:2px">Phone: <?php echo htmlspecialchars($phone); ?></div>
+            </div>
+            <div class="header-right">
+                <div class="title">YATRA TICKET</div>
+                <div style="margin-top:10px;font-size:14px;"><strong>PNR:</strong> <span style="font-family:monospace;font-size:18px;letter-spacing:2px"><?php echo htmlspecialchars($bk['pnr']??$bk['booking_ref']); ?></span></div>
+                <div style="font-size:14px;margin-top:5px;"><strong>Ref No:</strong> <?php echo htmlspecialchars($bk['booking_ref']); ?></div>
+                <div style="font-size:14px;margin-top:5px;"><strong>Date:</strong> <?php echo $bk['booking_date']?date('d-M-Y', strtotime($bk['booking_date'])):''; ?></div>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div>
+                <strong style="color:#2c3e50">Lead Passenger Details:</strong><br>
+                Name: <strong><?php echo htmlspecialchars($bk['lead_passenger_name']); ?></strong><br>
+                Phone: <?php echo htmlspecialchars($bk['phone']); ?><br>
+                Emergency Contact: <span style="color:#e74c3c"><?php echo htmlspecialchars($bk['emergency_contact_name'].' '.$bk['emergency_contact']); ?></span>
+            </div>
+            <div style="text-align:right">
+                <strong style="color:#2c3e50">Yatra Details:</strong><br>
+                Destination: <strong><?php echo htmlspecialchars($bk['yatra_name']??$bk['destination']); ?></strong><br>
+                Departure: <?php echo $bk['departure_date']?date('d-M-Y', strtotime($bk['departure_date'])):'TBD'; ?><br>
+                Return: <?php echo $bk['return_date']?date('d-M-Y', strtotime($bk['return_date'])):'TBD'; ?><br>
+                Bus: <?php echo htmlspecialchars($bk['bus_details']); ?>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div style="font-weight:bold;margin-bottom:10px;color:#2c3e50;">Passenger List:</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>ID Proof Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $sn=1; foreach($bk['passengers'] as $p): ?>
+                    <tr>
+                        <td><?php echo $sn++; ?></td>
+                        <td><strong><?php echo htmlspecialchars($p['name']); ?></strong></td>
+                        <td><?php echo htmlspecialchars($p['age']); ?></td>
+                        <td><?php echo htmlspecialchars($p['gender']); ?></td>
+                        <td><?php echo htmlspecialchars($p['id_proof_type']); ?> <?php echo htmlspecialchars($p['id_proof_number']); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:20px; align-items:flex-end;">
+            <div class="totals">
+                <table style="width:250px;border:none">
+                    <tr><td style="border:none;padding:5px 0">Total Amount:</td><td style="border:none;text-align:right;padding:5px 0"><?php echo $cur; ?> <?php echo number_format($bk['total_amount'], 2); ?></td></tr>
+                    <tr><td style="border:none;padding:5px 0">Amount Paid:</td><td style="border:none;text-align:right;padding:5px 0;color:green;font-weight:bold"><?php echo $cur; ?> <?php echo number_format($bk['amount_paid'], 2); ?></td></tr>
+                    <tr style="border-top:1px solid #ccc"><td style="border:none;padding:5px 0;font-weight:bold">Balance Due:</td><td style="border:none;text-align:right;padding:5px 0;color:#e74c3c;font-weight:bold"><?php echo $cur; ?> <?php echo number_format($bk['total_amount']-$bk['amount_paid'], 2); ?></td></tr>
+                </table>
+            </div>
+
+            <div style="text-align:right;">
+                <?php if ($vqr): ?>
+                <div class="qr-container" style="text-align:right;">
+                    <img src="<?php echo htmlspecialchars($vqr); ?>" width="120" height="120" alt="Verification QR">
+                    <div style="font-size:10px;color:#777;margin-top:5px;text-align:center;">Scan to Verify Ticket</div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="terms">
+            <strong>Terms & Conditions:</strong>
+            <ul style="margin-top:5px; padding-left:20px;">
+                <li>This ticket is subject to confirmation and subject to clearance of full payment.</li>
+                <li>Please carry valid original ID proof (Aadhaar/Voter ID) during the journey.</li>
+                <li>Advance booking amount is strictly non-refundable in case of cancellation.</li>
+                <li>Departure times are subject to change. Please confirm 24 hours prior to journey.</li>
+            </ul>
+        </div>
+    </div>
+    </body>
+    </html>
+    <?php
+    exit();
+}
+
 // Fetch enrollment + course
 $enr=$db->querySingle("SELECT e.*,c.course_name,c.course_code,c.duration_months FROM academy_enrollments e LEFT JOIN academy_courses c ON e.course_id=c.id WHERE e.id=".intval($enrollment_id),true);
 if(!$enr){header('Location: https://www.hidk.in');exit();}
